@@ -1,0 +1,49 @@
+# =============================
+# Script complet pour créer une VM Azure
+# =============================
+
+# 1) Se connecter à Azure
+Connect-AzAccount
+
+# 2) Définir les variables
+$rgName     = "MonGroupeRessources"
+$location   = "EastUS"
+$vnetName   = "MonVNet"
+$subnetName = "MonSubnet"
+$ipName     = "MonIPPublique"
+$nicName    = "MonNIC"
+$vmName     = "MaVM"
+$vmSize     = "Standard_DS1_v2"
+
+# 3) Créer le groupe de ressources
+New-AzResourceGroup -Name $rgName -Location $location
+
+# 4) Créer le réseau virtuel (VNet) et le sous-réseau
+$vnet = New-AzVirtualNetwork -ResourceGroupName $rgName -Location $location `
+    -Name $vnetName -AddressPrefix "10.0.0.0/16"
+
+Add-AzVirtualNetworkSubnetConfig -Name $subnetName -AddressPrefix "10.0.1.0/24" -VirtualNetwork $vnet | Set-AzVirtualNetwork
+
+# 5) Créer une IP publique
+$ip = New-AzPublicIpAddress -ResourceGroupName $rgName -Name $ipName `
+    -Location $location -AllocationMethod Dynamic
+
+# 6) Créer la carte réseau (NIC)
+$subnet = Get-AzVirtualNetworkSubnetConfig -Name $subnetName -VirtualNetwork $vnet
+
+$nic = New-AzNetworkInterface -ResourceGroupName $rgName -Location $location `
+    -Name $nicName -SubnetId $subnet.Id -PublicIpAddressId $ip.Id
+
+# 7) Demander les identifiants pour la VM
+$cred = Get-Credential
+
+# 8) Configurer la VM
+$vmConfig = New-AzVMConfig -VMName $vmName -VMSize $vmSize |
+    Set-AzVMOperatingSystem -Windows -ComputerName $vmName -Credential $cred -ProvisionVMAgent -EnableAutoUpdate |
+    Set-AzVMSourceImage -PublisherName "MicrosoftWindowsServer" -Offer "WindowsServer" -Skus "2019-Datacenter" -Version "latest" |
+    Add-AzVMNetworkInterface -Id $nic.Id
+
+# 9) Créer la VM
+New-AzVM -ResourceGroupName $rgName -Location $location -VM $vmConfig
+
+Write-Host "✅ VM créée avec succès !"

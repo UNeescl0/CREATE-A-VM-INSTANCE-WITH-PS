@@ -10,16 +10,16 @@ NIC_NAME="MonNIC"
 VM_NAME="MaVM"
 VM_SIZE="Standard_DS1_v2"
 ADMIN_USER="azureuser"
-ADMIN_PASS="MotDePasse123!"  # Pour Linux, utilisez clé SSH à la place
-IMAGE="Win2019Datacenter"    # Pour Linux: "UbuntuLTS"
+ADMIN_PASS="MotDePasse123!"
+IMAGE="Win2019Datacenter"
 
-# 1) Se connecter à Azure
+# Se connecter à Azure
 az login
 
-# 2) Créer le groupe de ressources
+# Créer le groupe de ressources
 az group create --name $RG_NAME --location $LOCATION
 
-# 3) Créer le réseau virtuel et le sous-réseau
+# Créer VNet et Subnet
 az network vnet create \
   --resource-group $RG_NAME \
   --name $VNET_NAME \
@@ -27,13 +27,13 @@ az network vnet create \
   --subnet-name $SUBNET_NAME \
   --subnet-prefix 10.0.1.0/24
 
-# 4) Créer l'IP publique
+# Créer IP publique
 az network public-ip create \
   --resource-group $RG_NAME \
   --name $IP_NAME \
   --allocation-method Dynamic
 
-# 5) Créer la carte réseau (NIC)
+# Créer NIC
 az network nic create \
   --resource-group $RG_NAME \
   --name $NIC_NAME \
@@ -41,7 +41,7 @@ az network nic create \
   --subnet $SUBNET_NAME \
   --public-ip-address $IP_NAME
 
-# 6) Créer la VM
+# Créer la VM
 az vm create \
   --resource-group $RG_NAME \
   --name $VM_NAME \
@@ -53,8 +53,5 @@ az vm create \
   --location $LOCATION \
   --output table
 
-# 7) Ouvrir le port RDP pour Windows ou SSH pour Linux
-az vm open-port --port 3389 --resource-group $RG_NAME --name $VM_NAME  # RDP Windows
-# az vm open-port --port 22 --resource-group $RG_NAME --name $VM_NAME  # SSH Linux
-
-echo "✅ VM créée avec succès !"
+# Ouvrir le port RDP pour Windows (ou 22 pour SSH Linux)
+az vm open-port --port 3389 --resource-group $RG_NAME --name $VM_NAME

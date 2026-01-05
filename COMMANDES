@@ -1,49 +1,60 @@
-# =============================
-# Script complet pour créer une VM Azure
-# =============================
+#!/bin/bash
+
+# Variables
+RG_NAME="MonGroupeRessources"
+LOCATION="eastus"
+VNET_NAME="MonVNet"
+SUBNET_NAME="MonSubnet"
+IP_NAME="MonIPPublique"
+NIC_NAME="MonNIC"
+VM_NAME="MaVM"
+VM_SIZE="Standard_DS1_v2"
+ADMIN_USER="azureuser"
+ADMIN_PASS="MotDePasse123!"  # Pour Linux, utilisez clé SSH à la place
+IMAGE="Win2019Datacenter"    # Pour Linux: "UbuntuLTS"
 
 # 1) Se connecter à Azure
-Connect-AzAccount
+az login
 
-# 2) Définir les variables
-$rgName     = "MonGroupeRessources"
-$location   = "EastUS"
-$vnetName   = "MonVNet"
-$subnetName = "MonSubnet"
-$ipName     = "MonIPPublique"
-$nicName    = "MonNIC"
-$vmName     = "MaVM"
-$vmSize     = "Standard_DS1_v2"
+# 2) Créer le groupe de ressources
+az group create --name $RG_NAME --location $LOCATION
 
-# 3) Créer le groupe de ressources
-New-AzResourceGroup -Name $rgName -Location $location
+# 3) Créer le réseau virtuel et le sous-réseau
+az network vnet create \
+  --resource-group $RG_NAME \
+  --name $VNET_NAME \
+  --address-prefix 10.0.0.0/16 \
+  --subnet-name $SUBNET_NAME \
+  --subnet-prefix 10.0.1.0/24
 
-# 4) Créer le réseau virtuel (VNet) et le sous-réseau
-$vnet = New-AzVirtualNetwork -ResourceGroupName $rgName -Location $location `
-    -Name $vnetName -AddressPrefix "10.0.0.0/16"
+# 4) Créer l'IP publique
+az network public-ip create \
+  --resource-group $RG_NAME \
+  --name $IP_NAME \
+  --allocation-method Dynamic
 
-Add-AzVirtualNetworkSubnetConfig -Name $subnetName -AddressPrefix "10.0.1.0/24" -VirtualNetwork $vnet | Set-AzVirtualNetwork
+# 5) Créer la carte réseau (NIC)
+az network nic create \
+  --resource-group $RG_NAME \
+  --name $NIC_NAME \
+  --vnet-name $VNET_NAME \
+  --subnet $SUBNET_NAME \
+  --public-ip-address $IP_NAME
 
-# 5) Créer une IP publique
-$ip = New-AzPublicIpAddress -ResourceGroupName $rgName -Name $ipName `
-    -Location $location -AllocationMethod Dynamic
+# 6) Créer la VM
+az vm create \
+  --resource-group $RG_NAME \
+  --name $VM_NAME \
+  --nics $NIC_NAME \
+  --image $IMAGE \
+  --admin-username $ADMIN_USER \
+  --admin-password $ADMIN_PASS \
+  --size $VM_SIZE \
+  --location $LOCATION \
+  --output table
 
-# 6) Créer la carte réseau (NIC)
-$subnet = Get-AzVirtualNetworkSubnetConfig -Name $subnetName -VirtualNetwork $vnet
+# 7) Ouvrir le port RDP pour Windows ou SSH pour Linux
+az vm open-port --port 3389 --resource-group $RG_NAME --name $VM_NAME  # RDP Windows
+# az vm open-port --port 22 --resource-group $RG_NAME --name $VM_NAME  # SSH Linux
 
-$nic = New-AzNetworkInterface -ResourceGroupName $rgName -Location $location `
-    -Name $nicName -SubnetId $subnet.Id -PublicIpAddressId $ip.Id
-
-# 7) Demander les identifiants pour la VM
-$cred = Get-Credential
-
-# 8) Configurer la VM
-$vmConfig = New-AzVMConfig -VMName $vmName -VMSize $vmSize |
-    Set-AzVMOperatingSystem -Windows -ComputerName $vmName -Credential $cred -ProvisionVMAgent -EnableAutoUpdate |
-    Set-AzVMSourceImage -PublisherName "MicrosoftWindowsServer" -Offer "WindowsServer" -Skus "2019-Datacenter" -Version "latest" |
-    Add-AzVMNetworkInterface -Id $nic.Id
-
-# 9) Créer la VM
-New-AzVM -ResourceGroupName $rgName -Location $location -VM $vmConfig
-
-Write-Host "✅ VM créée avec succès !"
+echo "✅ VM créée avec succès !"

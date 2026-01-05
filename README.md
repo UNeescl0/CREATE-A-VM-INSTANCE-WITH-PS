@@ -9,6 +9,7 @@ Connect-AzAccount
 Set-AzContext -Subscription "<SUBSCRIPTION_ID>"
 
 # ---------- VARIABLES ----------
+```bash
 $location = "westeurope"
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmm"
@@ -22,33 +23,39 @@ $nicName      = "NIC-$vmName"
 
 $vmSize = "Standard_B1s"
 $isWindowsVM = $true   # true = Windows | false = Linux
-
+```
 # ---------- IDENTIFIANTS VM ----------
+```bash
 $adminUser = "vmadmin"
 $adminPassword = ConvertTo-SecureString "MonMotDePasse123!456" -AsPlainText -Force
 $cred = New-Object System.Management.Automation.PSCredential ($adminUser, $adminPassword)
-
+```
 # ---------- RESOURCE GROUP ----------
+```bash
 New-AzResourceGroup -Name $resourceGroupName -Location $location
-
+```
 # ---------- VNET + SUBNET ----------
+```bash
 $subnetConfig = New-AzVirtualNetworkSubnetConfig `
   -Name $subnetName `
   -AddressPrefix "10.0.1.0/24"
-
+```
+```bash
 $vnet = New-AzVirtualNetwork `
   -Name $vnetName `
   -ResourceGroupName $resourceGroupName `
   -Location $location `
   -AddressPrefix "10.0.0.0/16" `
   -Subnet $subnetConfig
-
+```
 # ---------- NSG ----------
+```bash
 $nsg = New-AzNetworkSecurityGroup `
   -ResourceGroupName $resourceGroupName `
   -Location $location `
   -Name $nsgName
-
+```
+```bash
 $nsg | Add-AzNetworkSecurityRuleConfig `
   -Name "Allow-RDP" `
   -Protocol Tcp `
@@ -59,15 +66,17 @@ $nsg | Add-AzNetworkSecurityRuleConfig `
   -DestinationAddressPrefix "*" `
   -DestinationPortRange 3389 `
   -Access Allow | Set-AzNetworkSecurityGroup
-
+```
 # ---------- IP PUBLIQUE ----------
+```bash
 $publicIp = New-AzPublicIpAddress `
   -Name $publicIpName `
   -ResourceGroupName $resourceGroupName `
   -Location $location `
   -AllocationMethod Static
-
+```
 # ---------- NIC ----------
+```bash
 $subnet = Get-AzVirtualNetworkSubnetConfig -Name $subnetName -VirtualNetwork $vnet
 
 $nic = New-AzNetworkInterface `
@@ -77,8 +86,9 @@ $nic = New-AzNetworkInterface `
   -Subnet $subnet `
   -NetworkSecurityGroup $nsg `
   -PublicIpAddress $publicIp
-
+```
 # ---------- VM ----------
+```bash
 if ($isWindowsVM) {
     $vmConfig = New-AzVMConfig -VMName $vmName -VMSize $vmSize |
       Set-AzVMOperatingSystem -Windows -ComputerName $vmName -Credential $cred |
@@ -93,8 +103,11 @@ else {
 }
 
 New-AzVM -ResourceGroupName $resourceGroupName -Location $location -VM $vmConfig
-
+```
 # ---------- INFOS ----------
+```bash
 $ip = (Get-AzPublicIpAddress -Name $publicIpName -ResourceGroupName $resourceGroupName).IpAddress
 Write-Host "✅ VM créée avec succès"
 Write-Host "IP publique : $ip"
+
+```

@@ -2,7 +2,7 @@
 # CREATE-A-VM-INSTANCE-WITH-PS
 # Script PowerShell - Création VM Azure 
 
-# ---------- PRÉREQUIS (une seule fois) ----------
+# ---------- PRÉREQUIS ----------
 ```bash
 Install-Module Az -Scope CurrentUser -Force
 Connect-AzAccount

@@ -67,6 +67,11 @@ $nsg | Add-AzNetworkSecurityRuleConfig `
   -DestinationPortRange 3389 `
   -Access Allow | Set-AzNetworkSecurityGroup
 ```
+
+``` bash
+# SSH (MANQUANT → AJOUTÉ)
+$nsg | Add-AzNetworkSecurityRuleConfig -Name "Allow-SSH" -Protocol Tcp -Direction Inbound -Priority 1001 -SourceAddressPrefix "*" -SourcePortRange "*" -DestinationAddressPrefix "*" -DestinationPortRange 22 -Access Allow | Set-AzNetworkSecurityGroup
+````
 # ---------- IP PUBLIQUE ----------
 ```bash
 $publicIp = New-AzPublicIpAddress `
@@ -91,11 +96,10 @@ $nic = New-AzNetworkInterface `
 ```bash
 if ($isWindowsVM) {
     $vmConfig = New-AzVMConfig -VMName $vmName -VMSize $vmSize |
-      Set-AzVMOperatingSystem -Windows -ComputerName $vmName -Credential $cred |
-      Set-AzVMSourceImage -PublisherName "MicrosoftWindowsServer" -Offer "WindowsServer" -Skus "2022-datacenter" -Version "latest" |
+      Set-AzVMOperatingSystem -Windows -ComputerName $vmName -Credential $cred -ProvisionVMAgent |
+      Set-AzVMSourceImage -PublisherName "MicrosoftWindowsServer" -Offer "WindowsServer" -Skus "2022-datacenter-azure-edition-core" -Version "latest" |
       Add-AzVMNetworkInterface -Id $nic.Id
-}
-else {
+} else {
     $vmConfig = New-AzVMConfig -VMName $vmName -VMSize $vmSize |
       Set-AzVMOperatingSystem -Linux -ComputerName $vmName -Credential $cred -DisablePasswordAuthentication:$false |
       Set-AzVMSourceImage -PublisherName "Canonical" -Offer "0001-com-ubuntu-server-jammy" -Skus "22_04-lts-gen2" -Version "latest" |
@@ -103,6 +107,7 @@ else {
 }
 
 New-AzVM -ResourceGroupName $resourceGroupName -Location $location -VM $vmConfig
+
 ```
 # ---------- INFOS ----------
 ```bash

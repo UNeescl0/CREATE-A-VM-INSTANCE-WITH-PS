@@ -69,7 +69,7 @@ $nsg | Add-AzNetworkSecurityRuleConfig `
 ```
 
 ``` bash
-# SSH (MANQUANT → AJOUTÉ)
+# SSH 
 $nsg | Add-AzNetworkSecurityRuleConfig -Name "Allow-SSH" -Protocol Tcp -Direction Inbound -Priority 1001 -SourceAddressPrefix "*" -SourcePortRange "*" -DestinationAddressPrefix "*" -DestinationPortRange 22 -Access Allow | Set-AzNetworkSecurityGroup
 ````
 # ---------- IP PUBLIQUE ----------

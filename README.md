@@ -1,13 +1,13 @@
-# ============================================================
+
 # CREATE-A-VM-INSTANCE-WITH-PS
-# Script PowerShell - Création VM Azure depuis ZÉRO
-# ============================================================
+# Script PowerShell - Création VM Azure 
 
 # ---------- PRÉREQUIS (une seule fois) ----------
+```bash
 Install-Module Az -Scope CurrentUser -Force
 Connect-AzAccount
 Set-AzContext -Subscription "<SUBSCRIPTION_ID>"
-
+```
 # ---------- VARIABLES ----------
 ```bash
 $location = "westeurope"

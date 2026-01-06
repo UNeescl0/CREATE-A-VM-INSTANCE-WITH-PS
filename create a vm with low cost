@@ -1,27 +1,48 @@
-# =========================
-# VARIABLES (COUT MINIMUM)
-# =========================
+# =====================================
+# Script automatique VM LOW COST Azure
+# =====================================
 
+# =========================
+# VARIABLES DE BASE
+# =========================
 $resourceGroup = "RG-LOW-COST"
-$location      = "uksouth"                 # Région autorisée
 $vmName        = "VM-LOWCOST"
-$vmSize        = "Standard_B1s"            # VM la moins chère
+$vmSize        = "Standard_B1s"       # VM la moins chère
 $adminUser     = "azureuser"
 $adminPassword = ConvertTo-SecureString "Az@123456!" -AsPlainText -Force
 $cred          = New-Object System.Management.Automation.PSCredential ($adminUser, $adminPassword)
 
 # =========================
-# RESOURCE GROUP
+# LISTE DES REGIONS DISPONIBLES
 # =========================
-
-New-AzResourceGroup `
-    -Name $resourceGroup `
-    -Location $location
+Write-Host "Liste des régions disponibles pour votre abonnement :" -ForegroundColor Cyan
+$locations = Get-AzLocation | Select-Object Location, DisplayName
+$locations | Format-Table -AutoSize
 
 # =========================
-# RESEAU
+# CHOIX DE LA REGION
 # =========================
+$location = Read-Host "Entrez le nom de la région à utiliser (ex: francecentral)"
+Write-Host "Vous avez choisi : $location" -ForegroundColor Green
 
+# =========================
+# SUPPRESSION DE L'ANCIENNE RESOURCE GROUP (si existante)
+# =========================
+if (Get-AzResourceGroup -Name $resourceGroup -ErrorAction SilentlyContinue) {
+    Write-Host "Resource Group existant trouvé. Suppression..." -ForegroundColor Yellow
+    Remove-AzResourceGroup -Name $resourceGroup -Force
+    Write-Host "Resource Group supprimé." -ForegroundColor Green
+}
+
+# =========================
+# CREATION RESOURCE GROUP
+# =========================
+New-AzResourceGroup -Name $resourceGroup -Location $location
+Write-Host "Resource Group créé." -ForegroundColor Green
+
+# =========================
+# CREATION RESEAU (VNet + Subnet)
+# =========================
 $vnet = New-AzVirtualNetwork `
     -ResourceGroupName $resourceGroup `
     -Location $location `
@@ -34,36 +55,34 @@ $subnet = Add-AzVirtualNetworkSubnetConfig `
     -VirtualNetwork $vnet
 
 $vnet | Set-AzVirtualNetwork
+Write-Host "VNet et Subnet créés." -ForegroundColor Green
 
 # =========================
-# IP PUBLIQUE (DYNAMIC)
+# IP PUBLIQUE (Dynamic)
 # =========================
-
 $publicIp = New-AzPublicIpAddress `
     -ResourceGroupName $resourceGroup `
     -Location $location `
     -Name "IP-LOW" `
     -AllocationMethod Dynamic `
     -Sku Basic
+Write-Host "IP publique créée." -ForegroundColor Green
 
 # =========================
-# CARTE RESEAU
+# CARTE RESEAU (NIC)
 # =========================
-
 $nic = New-AzNetworkInterface `
     -ResourceGroupName $resourceGroup `
     -Location $location `
     -Name "NIC-LOW" `
     -SubnetId $vnet.Subnets[0].Id `
     -PublicIpAddressId $publicIp.Id
+Write-Host "Carte réseau créée." -ForegroundColor Green
 
 # =========================
 # CONFIGURATION VM
 # =========================
-
-$vmConfig = New-AzVMConfig `
-    -VMName $vmName `
-    -VMSize $vmSize
+$vmConfig = New-AzVMConfig -VMName $vmName -VMSize $vmSize
 
 $vmConfig = Set-AzVMOperatingSystem `
     -VM $vmConfig `
@@ -78,16 +97,17 @@ $vmConfig = Set-AzVMSourceImage `
     -Skus "22_04-lts" `
     -Version "latest"
 
-$vmConfig = Add-AzVMNetworkInterface `
-    -VM $vmConfig `
-    -Id $nic.Id
+$vmConfig = Add-AzVMNetworkInterface -VM $vmConfig -Id $nic.Id
 
 # =========================
 # CREATION VM
 # =========================
+Write-Host "Création de la VM..." -ForegroundColor Cyan
+New-AzVM -ResourceGroupName $resourceGroup -Location $location -VM $vmConfig
+Write-Host "VM créée avec succès !" -ForegroundColor Green
 
-New-AzVM `
-    -ResourceGroupName $resourceGroup `
-    -Location $location `
-    -VM $vmConfig
-
+# =========================
+# FIN
+# =========================
+Write-Host "`nScript terminé. Vérifiez votre VM avec :" -ForegroundColor Yellow
+Write-Host "Get-AzVM -ResourceGroupName $resourceGroup"

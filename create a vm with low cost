@@ -3,9 +3,9 @@
 # =========================
 
 $resourceGroup = "RG-LOW-COST"
-$location      = "westeurope"
+$location      = "uksouth"                 # Région autorisée
 $vmName        = "VM-LOWCOST"
-$vmSize        = "Standard_B1s"     # SKU le moins cher
+$vmSize        = "Standard_B1s"            # VM la moins chère
 $adminUser     = "azureuser"
 $adminPassword = ConvertTo-SecureString "Az@123456!" -AsPlainText -Force
 $cred          = New-Object System.Management.Automation.PSCredential ($adminUser, $adminPassword)
@@ -90,3 +90,4 @@ New-AzVM `
     -ResourceGroupName $resourceGroup `
     -Location $location `
     -VM $vmConfig
+

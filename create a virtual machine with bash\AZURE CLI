@@ -1,0 +1,124 @@
+#!/bin/bash
+
+# =====================================
+# Script automatique VM LOW COST Azure
+# =====================================
+
+# =========================
+# VARIABLES
+# =========================
+RESOURCE_GROUP="RG-LOW-COST"
+LOCATION="francecentral"          # Région autorisée
+VM_NAME="VM-LOWCOST"
+VM_SIZE="Standard_B1s"
+ADMIN_USER="azureuser"
+SSH_KEY="$HOME/.ssh/id_rsa.pub"   # Assurez-vous que la clé existe, sinon utilisez --generate-ssh-keys
+
+VNET_NAME="VNET-LOW"
+SUBNET_NAME="Subnet-LOW"
+PUBLIC_IP_NAME="IP-LOW"
+NIC_NAME="NIC-LOW"
+NSG_NAME="NSG-LOW"
+
+echo "========================================"
+echo "Création d'une VM Low Cost Azure"
+echo "Région utilisée : $LOCATION"
+echo "========================================"
+
+# =========================
+# SUPPRESSION DU RG EXISTANT
+# =========================
+if az group exists --name "$RESOURCE_GROUP" | grep -q true; then
+  echo "Suppression du Resource Group existant..."
+  az group delete --name "$RESOURCE_GROUP" --yes
+  echo "Attente de la suppression complète..."
+  while az group exists --name "$RESOURCE_GROUP" | grep -q true; do
+    sleep 5
+  done
+fi
+
+# =========================
+# CREATION DU RESOURCE GROUP
+# =========================
+az group create \
+  --name "$RESOURCE_GROUP" \
+  --location "$LOCATION"
+
+# =========================
+# CREATION DU RESEAU (VNet + Subnet)
+# =========================
+az network vnet create \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$VNET_NAME" \
+  --address-prefix 10.0.0.0/16 \
+  --subnet-name "$SUBNET_NAME" \
+  --subnet-prefix 10.0.1.0/24 \
+  -l $LOCATION
+
+# =========================
+# CREATION DU NSG + SSH
+# =========================
+az network nsg create \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$NSG_NAME" \
+  -l $LOCATION
+
+az network nsg rule create \
+  --resource-group "$RESOURCE_GROUP" \
+  --nsg-name "$NSG_NAME" \
+  --name Allow-SSH \
+  --priority 1000 \
+  --direction Inbound \
+  --access Allow \
+  --protocol Tcp \
+  --destination-port-range 22
+
+# =========================
+# CREATION DE L'IP PUBLIQUE (Standard + Static)
+# =========================
+az network public-ip create \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$PUBLIC_IP_NAME" \
+  --allocation-method Static \
+  --sku Standard \
+  -l $LOCATION
+
+# =========================
+# CREATION DE LA NIC
+# =========================
+az network nic create \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$NIC_NAME" \
+  --vnet-name "$VNET_NAME" \
+  --subnet "$SUBNET_NAME" \
+  --network-security-group "$NSG_NAME" \
+  --public-ip-address "$PUBLIC_IP_NAME" \
+  -l $LOCATION
+
+# =========================
+# CREATION DE LA VM
+# =========================
+az vm create \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$VM_NAME" \
+  --size "$VM_SIZE" \
+  --image Ubuntu2204 \
+  --admin-username "$ADMIN_USER" \
+  --ssh-key-values "$SSH_KEY" \
+  --nics "$NIC_NAME" \
+  -l $LOCATION
+
+# =========================
+# AFFICHAGE DE L'IP PUBLIQUE POUR SSH
+# =========================
+PUBLIC_IP=$(az network public-ip show \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$PUBLIC_IP_NAME" \
+  --query ipAddress -o tsv)
+
+echo
+echo "========================================"
+echo "✅ VM créée avec succès dans la région $LOCATION"
+echo "Connexion SSH :"
+echo "ssh $ADMIN_USER@$PUBLIC_IP"
+echo "========================================"
